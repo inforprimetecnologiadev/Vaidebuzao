@@ -128,6 +128,12 @@ class PipelineTest(unittest.TestCase):
         shape = self.q("SELECT shape FROM patterns WHERE ref='101'")[0][0]
         self.assertTrue(len(shape) > 0)
 
+    def test_polyline_do_app(self):
+        # "_p~iF~ps|U_ulLnnqC_mqNvxq`@" = exemplo oficial do algoritmo Encoded Polyline
+        pts = pipeline.decode_polyline("_p~iF~ps|U_ulLnnqC_mqNvxq`@")
+        self.assertEqual(pts, [(38.5, -120.2), (40.7, -120.95), (43.252, -126.453)])
+        self.assertEqual(pipeline.decode_polyline(pipeline.encode_polyline(pts)), pts)
+
     def test_chain_ways_inverte(self):
         chain = pipeline.chain_ways([[(0, 1), (0, 0)], [(0, 1), (0, 2)]])
         self.assertEqual(chain, [(0, 0), (0, 1), (0, 2)])

@@ -10,6 +10,14 @@ gera um novo `transit.db` para o app.
 > **Regra de ouro:** só cadastre linhas com informação **verdadeira e conferida** (itinerário oficial
 > publicado pela prefeitura/operadora, ou trajeto que você mesmo conferiu). Nunca invente.
 
+## Jeito mais fácil: gravar pelo app
+
+Na aba **Linhas**, toque em **"Gravar linha"**. Dentro do ônibus, toque em **"Parou num ponto"** em cada
+parada. No fim, use **"Enviar para o projeto (GitHub)"**: o GitHub abre com o arquivo já pronto nesta pasta, e
+é só tocar em **"Commit changes"**. Ou use **"Compartilhar arquivo"** e mande o arquivo para o Claude Code.
+
+O arquivo gerado pelo app usa `trajeto_polyline` (o trajeto compactado) no lugar de `trajeto`.
+
 ## Formato
 
 Um arquivo pode ter uma ou várias linhas (lista). Exemplo: `data/linhas/cuiaba-101.json`

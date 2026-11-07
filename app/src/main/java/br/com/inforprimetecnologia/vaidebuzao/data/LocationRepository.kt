@@ -12,9 +12,20 @@ import br.com.inforprimetecnologia.vaidebuzao.core.geo.GeoPoint
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import android.location.LocationListener
+import android.os.Looper
+import com.google.android.gms.location.LocationCallback
+import com.google.android.gms.location.LocationRequest
+import com.google.android.gms.location.LocationResult
 import kotlin.coroutines.resume
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
+
+/** Leitura do GPS com a precisão estimada (metros). */
+data class LocationFix(val point: GeoPoint, val accuracyMeters: Float, val timeMillis: Long)
 
 /**
  * Localização sob demanda (somente com o app aberto). Nada é gravado: a posição vive só na memória.
@@ -35,6 +46,58 @@ class LocationRepository(private val context: Context) {
         if (!hasPermission()) return null
         val loc = withTimeoutOrNull(12_000) { fused() } ?: withTimeoutOrNull(12_000) { platform() }
         return loc?.let { GeoPoint(it.latitude, it.longitude) }
+    }
+
+    /**
+     * Atualizações contínuas (a cada ~3 s) para o "Gravar linha". Quem coleta deve parar quando o app sai da tela
+     * (repeatOnLifecycle), para respeitar a regra "localização só com o app aberto".
+     */
+    @SuppressLint("MissingPermission")
+    fun updates(intervalMillis: Long = 3000): Flow<LocationFix> = callbackFlow {
+        if (!hasPermission()) {
+            close()
+            return@callbackFlow
+        }
+        fun emit(loc: Location) {
+            trySend(LocationFix(GeoPoint(loc.latitude, loc.longitude), if (loc.hasAccuracy()) loc.accuracy else 999f, System.currentTimeMillis()))
+        }
+        var cleanup: () -> Unit = {}
+        val fusedOk = try {
+            val client = LocationServices.getFusedLocationProviderClient(context)
+            val callback = object : LocationCallback() {
+                override fun onLocationResult(result: LocationResult) {
+                    result.locations.forEach { emit(it) }
+                }
+            }
+            val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, intervalMillis)
+                .setMinUpdateIntervalMillis(intervalMillis / 2)
+                .build()
+            client.requestLocationUpdates(request, callback, Looper.getMainLooper())
+            cleanup = { client.removeLocationUpdates(callback) }
+            true
+        } catch (_: Exception) {
+            false
+        }
+        if (!fusedOk) {
+            val lm = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            val provider = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+                .firstOrNull { p -> lm != null && runCatching { lm.isProviderEnabled(p) }.getOrDefault(false) }
+            if (lm != null && provider != null) {
+                // Implementação completa: em Android < 11 os outros métodos não têm implementação padrão.
+                val listener = object : LocationListener {
+                    override fun onLocationChanged(location: Location) = emit(location)
+                    override fun onProviderEnabled(provider: String) = Unit
+                    override fun onProviderDisabled(provider: String) = Unit
+
+                    @Deprecated("API antiga")
+                    @Suppress("DEPRECATION")
+                    override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) = Unit
+                }
+                lm.requestLocationUpdates(provider, intervalMillis, 0f, listener, Looper.getMainLooper())
+                cleanup = { lm.removeUpdates(listener) }
+            }
+        }
+        awaitClose { cleanup() }
     }
 
     @SuppressLint("MissingPermission")

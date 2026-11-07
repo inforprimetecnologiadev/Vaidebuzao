@@ -34,6 +34,7 @@ sealed interface Gate {
 }
 
 const val OPT_HISTORY = "historico_buscas"
+const val OPT_RECORDING = "gravacao_linhas"
 
 class AppViewModel(private val c: AppContainer) : ViewModel() {
 
@@ -69,13 +70,19 @@ class AppViewModel(private val c: AppContainer) : ViewModel() {
 
     private suspend fun record(action: ConsentAction, optional: Map<String, Boolean>) {
         val legal = _legal.value ?: c.legal.bundle()
+        // ATUALIZADO mantém os demais consentimentos opcionais do último registro
+        val merged = if (action == ConsentAction.ATUALIZADO) {
+            consentRecords.value?.firstOrNull()?.optional.orEmpty() + optional
+        } else {
+            optional
+        }
         c.consent.append(
             action = action,
             termsVersion = legal.terms.version,
             privacyVersion = legal.privacy.version,
             termsHash = legal.terms.sha256,
             privacyHash = legal.privacy.sha256,
-            optional = optional,
+            optional = merged,
             appVersion = BuildConfig.VERSION_NAME,
             dataVersion = dataVersion(),
         )
@@ -99,7 +106,21 @@ class AppViewModel(private val c: AppContainer) : ViewModel() {
     fun revoke() = viewModelScope.launch {
         c.settings.setHistoryEnabled(false)
         c.favorites.clearHistory()
-        record(ConsentAction.REVOGADO, mapOf(OPT_HISTORY to false))
+        c.recordings.wipe()
+        record(ConsentAction.REVOGADO, mapOf(OPT_HISTORY to false, OPT_RECORDING to false))
+    }
+
+    /** Consentimento para gravar trajetos ("Gravar linha"), registrado na primeira gravação. */
+    fun consentRecording() = viewModelScope.launch {
+        if (consentRecords.value?.firstOrNull()?.optional?.get(OPT_RECORDING) != true) {
+            record(ConsentAction.ATUALIZADO, mapOf(OPT_RECORDING to true))
+        }
+    }
+
+    /** Retira o consentimento de gravação e apaga as linhas gravadas. */
+    fun withdrawRecording() = viewModelScope.launch {
+        c.recordings.wipe()
+        record(ConsentAction.ATUALIZADO, mapOf(OPT_RECORDING to false))
     }
 
     fun setHistoryEnabled(enabled: Boolean) = viewModelScope.launch {
@@ -111,6 +132,7 @@ class AppViewModel(private val c: AppContainer) : ViewModel() {
     /** "Apagar meus dados": tudo some; resta só o registro mínimo da exclusão. */
     fun wipeAll() = viewModelScope.launch {
         c.favorites.wipe()
+        c.recordings.wipe()
         c.settings.clear()
         c.consent.wipe()
         record(ConsentAction.DADOS_APAGADOS, emptyMap())
@@ -156,6 +178,20 @@ class AppViewModel(private val c: AppContainer) : ViewModel() {
                             mapOf(
                                 "titulo" to str(it.title), "lat" to JsonPrimitive(it.lat), "lon" to JsonPrimitive(it.lon),
                                 "data_hora" to str(it.createdAt),
+                            ),
+                        )
+                    },
+                ),
+                "linhas_gravadas" to JsonArray(
+                    c.recordings.all.value.map { r ->
+                        val l = r.line
+                        JsonObject(
+                            mapOf(
+                                "numero" to str(l.number), "nome" to str(l.name), "de" to str(l.from), "para" to str(l.to),
+                                "operadora" to str(l.operator), "data" to str(l.date),
+                                "finalizada" to JsonPrimitive(r.finished),
+                                "pontos" to JsonArray(l.stops.map { p -> JsonArray(listOf(JsonPrimitive(p.lat), JsonPrimitive(p.lon))) }),
+                                "trajeto_polyline" to str(br.com.inforprimetecnologia.vaidebuzao.core.geo.Polyline.encode(l.trace)),
                             ),
                         )
                     },

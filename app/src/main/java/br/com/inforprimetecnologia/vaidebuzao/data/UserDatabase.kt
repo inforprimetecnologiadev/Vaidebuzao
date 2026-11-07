@@ -23,7 +23,7 @@ import kotlinx.serialization.json.jsonPrimitive
  * Banco local do usuário (somente no aparelho): histórico de consentimento, favoritos e histórico de buscas.
  * A tabela consent_log é "somente inserção": nunca atualizamos linhas, apenas acrescentamos.
  */
-class UserDatabase(context: Context) : SQLiteOpenHelper(context, "usuario.db", null, 1) {
+class UserDatabase(context: Context) : SQLiteOpenHelper(context, "usuario.db", null, 2) {
     override fun onCreate(db: SQLiteDatabase) {
         db.execSQL(
             """CREATE TABLE consent_log(
@@ -60,9 +60,30 @@ class UserDatabase(context: Context) : SQLiteOpenHelper(context, "usuario.db", n
                 criado_em TEXT NOT NULL
             )""",
         )
+        createRecordings(db)
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 2) createRecordings(db)
+    }
+
+    /** v2: linhas gravadas pelo usuário ("Gravar linha"). Ficam só no aparelho. */
+    private fun createRecordings(db: SQLiteDatabase) {
+        db.execSQL(
+            """CREATE TABLE IF NOT EXISTS gravacoes(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                numero TEXT NOT NULL,
+                nome TEXT,
+                de TEXT,
+                para TEXT NOT NULL,
+                operadora TEXT,
+                trajeto TEXT NOT NULL,
+                pontos TEXT NOT NULL,
+                data TEXT NOT NULL,
+                finalizada INTEGER NOT NULL DEFAULT 0
+            )""",
+        )
+    }
 }
 
 enum class FavoriteType { PONTO, LINHA, LUGAR }

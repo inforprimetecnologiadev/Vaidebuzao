@@ -53,6 +53,10 @@ import br.com.inforprimetecnologia.vaidebuzao.ui.screens.sendEmail
 import br.com.inforprimetecnologia.vaidebuzao.ui.state.AppViewModel
 import br.com.inforprimetecnologia.vaidebuzao.ui.state.Gate
 import br.com.inforprimetecnologia.vaidebuzao.ui.state.TransitViewModel
+import br.com.inforprimetecnologia.vaidebuzao.ui.state.RecordLineViewModel
+import br.com.inforprimetecnologia.vaidebuzao.ui.screens.RecordLineScreen
+import br.com.inforprimetecnologia.vaidebuzao.ui.screens.MyRecordingsScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 private data class Tab(val route: String, val label: String, val icon: ImageVector)
 
@@ -64,7 +68,7 @@ private val tabs = listOf(
 )
 
 @Composable
-fun AppRoot(app: AppViewModel, transit: TransitViewModel) {
+fun AppRoot(app: AppViewModel, transit: TransitViewModel, container: br.com.inforprimetecnologia.vaidebuzao.data.AppContainer) {
     val gate by app.gate.collectAsState()
     val legal by app.legal.collectAsState()
     when (val g = gate) {
@@ -72,12 +76,12 @@ fun AppRoot(app: AppViewModel, transit: TransitViewModel) {
         is Gate.NeedsConsent -> legal?.let { ConsentScreen(it, g.isUpdate, onAccept = { app.accept(it) }, onDecline = { app.decline() }) }
         Gate.Declined -> DeclinedScreen(onReview = app::reviewTermsAgain)
         Gate.Onboarding -> OnboardingScreen(onPermissionResult = { transit.refreshLocation() }, onFinish = { app.finishOnboarding() })
-        Gate.Ready -> MainNav(app, transit)
+        Gate.Ready -> MainNav(app, transit, container)
     }
 }
 
 @Composable
-private fun MainNav(app: AppViewModel, transit: TransitViewModel) {
+private fun MainNav(app: AppViewModel, transit: TransitViewModel, container: br.com.inforprimetecnologia.vaidebuzao.data.AppContainer) {
     val nav = rememberNavController()
     val backStack by nav.currentBackStackEntryAsState()
     val current = backStack?.destination?.route
@@ -114,7 +118,32 @@ private fun MainNav(app: AppViewModel, transit: TransitViewModel) {
             composable("inicio") {
                 HomeScreen(transit, onOpenStop = { nav.navigate("ponto/$it") }, onOpenSearch = { nav.navigate("buscar") })
             }
-            composable("linhas") { LinesScreen(transit, onOpenLine = { nav.navigate("linha/${android.net.Uri.encode(it)}") }) }
+            composable("linhas") {
+                LinesScreen(
+                    transit,
+                    onOpenLine = { nav.navigate("linha/${android.net.Uri.encode(it)}") },
+                    onRecord = { nav.navigate("gravar") },
+                    onOpenRecordings = { nav.navigate("gravacoes") },
+                )
+            }
+            composable("gravar") {
+                val rec: RecordLineViewModel = viewModel { RecordLineViewModel(container) }
+                RecordLineScreen(
+                    rec,
+                    onConsent = { app.consentRecording() },
+                    onBack = { nav.popBackStack() },
+                    onOpenRecordings = { nav.navigate("gravacoes") },
+                )
+            }
+            composable("gravacoes") {
+                val rec: RecordLineViewModel = viewModel { RecordLineViewModel(container) }
+                MyRecordingsScreen(
+                    rec,
+                    onBack = { nav.popBackStack() },
+                    onOpenLine = { nav.navigate("linha/${android.net.Uri.encode(it)}") },
+                    onRecord = { nav.navigate("gravar") { popUpTo("gravacoes") { inclusive = true } } },
+                )
+            }
             composable("favoritos") {
                 FavoritesScreen(
                     transit,
@@ -176,6 +205,7 @@ private fun MainNav(app: AppViewModel, transit: TransitViewModel) {
                     onBack = { nav.popBackStack() },
                     onOpenHistory = { nav.navigate("consentimentos") },
                     onOpenDoc = { nav.navigate("documento/$it") },
+                    onOpenRecordings = { nav.navigate("gravacoes") },
                 )
             }
             composable("consentimentos") { ConsentHistoryScreen(app, onBack = { nav.popBackStack() }) }

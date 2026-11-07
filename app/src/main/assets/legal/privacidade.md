@@ -4,6 +4,7 @@ Versão {{versao_privacidade}} · em vigor desde {{vigencia}}
 
 > **Resumo em 30 segundos**
 > - **Sua localização é usada só no seu celular** para achar pontos e rotas. Nós **não** a recebemos nem guardamos em servidor.
+> - Se você usar o **"Gravar linha"** (opcional), o trajeto do ônibus fica salvo **só no seu celular**, e você decide se envia ao projeto.
 > - O App **não tem cadastro, anúncios, rastreadores nem ferramentas de análise**.
 > - Favoritos, preferências e o registro dos seus aceites ficam **somente no aparelho**.
 > - Para mostrar o mapa e buscar endereços, o App conversa com serviços gratuitos de terceiros (detalhes no item 5).
@@ -32,10 +33,11 @@ O Vai de Buzão foi desenhado para **funcionar sem servidor próprio**. Não exi
 
 | Dado | Para que serve | Onde fica | Base legal (LGPD) |
 |---|---|---|---|
-| Localização aproximada ou precisa (GPS), se você permitir | Achar o ponto mais próximo e calcular rotas | Somente na memória do aparelho, durante o uso. Não é gravada | Consentimento (art. 7º, I) |
+| Localização aproximada ou precisa (GPS), se você permitir | Achar o ponto mais próximo e calcular rotas | Somente na memória do aparelho, durante o uso. Não é gravada (exceto no "Gravar linha", se você usar: item 5.1) | Consentimento (art. 7º, I) |
 | Endereço ou lugar que você digita na busca | Encontrar o destino | Enviado ao serviço de busca (item 5); no aparelho só se o histórico estiver ativado | Execução do serviço solicitado por você (art. 7º, V) |
 | Favoritos (pontos, linhas e lugares) | Acesso rápido | Somente no aparelho | Execução do serviço (art. 7º, V) |
 | Histórico de buscas (opcional) | Repetir buscas recentes | Somente no aparelho | Consentimento (art. 7º, I) |
+| Trajeto e pontos de uma linha gravada no "Gravar linha" (opcional) | Cadastrar linhas de ônibus que faltam no app | Somente no aparelho; sai dele só se **você** compartilhar | Consentimento (art. 7º, I), registrado na primeira gravação |
 | Preferências (tema claro, escuro ou automático) | Personalizar o App | Somente no aparelho | Execução do serviço (art. 7º, V) |
 | Registro de aceite, recusa ou revogação (data, hora, versões, versão do App) | Comprovar suas escolhas e atender à LGPD | Somente no aparelho | Cumprimento de obrigação legal (art. 7º, II) e exercício regular de direitos (art. 7º, VI) |
 
@@ -51,10 +53,17 @@ O App não vende nem compartilha dados pessoais para publicidade. Para funcionar
 
 Esses serviços têm suas próprias políticas de privacidade e podem estar fora do Brasil. A transferência internacional ocorre por iniciativa do titular, para executar o serviço que ele solicitou (art. 33, LGPD).
 
+## 5.1. "Gravar linha" (opcional)
+
+Você pode gravar uma linha de ônibus enquanto viaja. Durante a gravação, e **somente com o App aberto na tela**, ele lê sua localização a cada poucos segundos para desenhar o trajeto, e você marca os pontos de parada. A gravação fica no seu aparelho e passa a valer na hora para você.
+
+Se você tocar em **"Enviar para o projeto"** ou **"Compartilhar arquivo"**, um arquivo com o número e o destino da linha, os pontos marcados e o trajeto (**sem o horário da viagem**) é enviado para onde você escolher. No envio pelo GitHub, o arquivo fica **público** no repositório do projeto, ligado à sua conta do GitHub, para entrar no app de todos. Esse envio é sempre uma ação sua. Não envie se não estiver de acordo.
+
 ## 6. Por quanto tempo guardamos
 
 - **Localização:** apenas durante o uso, não é gravada.
 - **Favoritos, histórico e preferências:** até você apagar ou desinstalar o App.
+- **Linhas gravadas:** até você apagar cada uma, retirar o consentimento de gravação, usar "Apagar meus dados" ou desinstalar o App.
 - **Registro de consentimento:** enquanto o App estiver instalado. Ao usar "Apagar meus dados", fica apenas um registro mínimo da exclusão, com data e hora.
 
 Ao **desinstalar** o App, o Android apaga todos esses dados do aparelho. O App **não faz backup na nuvem** dos seus dados.
@@ -69,7 +78,7 @@ Em **Ajustes › Privacidade** você pode, sem precisar nos contatar:
 
 - **Confirmar e acessar** seus dados e consentimentos: "Meus consentimentos" e "Exportar meus dados";
 - **Portabilidade:** "Exportar meus dados" gera um arquivo JSON para compartilhar;
-- **Revogar o consentimento** a qualquer momento: "Revogar consentimento";
+- **Revogar o consentimento** a qualquer momento: "Revogar consentimento" (geral) ou "Retirar consentimento de gravação" (só o "Gravar linha");
 - **Eliminação:** "Apagar meus dados";
 - **Corrigir ou desativar** consentimentos opcionais, como o histórico de buscas;
 - **Permissões do sistema:** ligar ou desligar a localização nas configurações do Android.

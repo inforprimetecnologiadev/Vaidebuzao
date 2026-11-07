@@ -42,7 +42,7 @@ class MainActivity : ComponentActivity() {
                 onDispose {}
             }
             VaiDeBuzaoTheme(darkTheme = dark) {
-                AppRoot(app, transit)
+                AppRoot(app, transit, container)
             }
         }
     }

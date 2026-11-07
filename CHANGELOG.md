@@ -8,6 +8,10 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 ## [1.0.0] - 2026-11-07
 
 ### Adicionado
+- **Gravar linha:** dentro do ônibus, o app grava o trajeto e você marca as paradas. A linha passa a valer
+  na hora no aparelho (pontos, linhas e rotas) e pode ser enviada ao projeto pelo GitHub ou compartilhada.
+  Rascunho automático, "gravar a volta" e "Minhas gravações".
+- Política de Privacidade 1.1.0 (gravação de trajetos opcional, com consentimento registrado).
 - Mapa (MapLibre + OpenFreeMap, gratuito) com os pontos de ônibus de Cuiabá, Várzea Grande e região.
 - Ponto de ônibus mais próximo com distância e tempo a pé; escolha manual do local com toque longo no mapa.
 - Detalhe do ponto com as linhas que passam e o sentido de cada uma.

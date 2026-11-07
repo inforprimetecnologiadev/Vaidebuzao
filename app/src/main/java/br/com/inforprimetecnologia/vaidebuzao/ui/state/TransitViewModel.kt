@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import br.com.inforprimetecnologia.vaidebuzao.core.geo.GeoPoint
 import br.com.inforprimetecnologia.vaidebuzao.core.routing.Itinerary
+import br.com.inforprimetecnologia.vaidebuzao.core.recording.Recording
 import br.com.inforprimetecnologia.vaidebuzao.core.routing.Router
 import br.com.inforprimetecnologia.vaidebuzao.core.transit.NearbyStop
 import br.com.inforprimetecnologia.vaidebuzao.core.transit.SearchHit
@@ -88,10 +89,16 @@ class TransitViewModel(private val c: AppContainer) : ViewModel() {
 
     init {
         viewModelScope.launch {
-            val net = c.transit.network()
-            router = withContext(Dispatchers.Default) { Router(net) }
-            _stopsGeoJson.value = withContext(Dispatchers.Default) { MapGeoJson.stops(net) }
-            _network.value = net
+            val base = c.transit.network()
+            c.recordings.load()
+            // Linhas gravadas pelo usuário entram na rede na hora (só neste aparelho).
+            c.recordings.all.collect { saved ->
+                val lines = saved.filter { it.finished }.map { it.line }
+                val net = withContext(Dispatchers.Default) { Recording.merge(base, lines) }
+                router = withContext(Dispatchers.Default) { Router(net) }
+                _stopsGeoJson.value = withContext(Dispatchers.Default) { MapGeoJson.stops(net) }
+                _network.value = net
+            }
         }
     }
 

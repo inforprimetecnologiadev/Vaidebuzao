@@ -40,6 +40,8 @@ android {
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
         buildConfigField("String", "REPO_URL", "\"https://github.com/inforprimetecnologiadev/vaidebuzao\"")
+        // Branch que recebe as linhas gravadas enviadas pelo app (botão "Enviar para o projeto")
+        buildConfigField("String", "DATA_BRANCH", "\"main\"")
     }
 
     signingConfigs {

@@ -32,7 +32,15 @@ data class RoutePattern(
     val shape: List<GeoPoint>,
     /** true quando a sequência de pontos foi inferida pela proximidade ao trajeto. */
     val inferredStops: Boolean,
+    /** De onde veio: null = base do app; [SOURCE_USER] = gravada pelo próprio usuário neste aparelho. */
+    val source: String? = null,
 ) {
+    val isUserRecorded: Boolean get() = source == SOURCE_USER
+
+    companion object {
+        const val SOURCE_USER = "usuario"
+    }
+
     val directionLabel: String
         get() = when {
             !to.isNullOrBlank() -> "Sentido $to"

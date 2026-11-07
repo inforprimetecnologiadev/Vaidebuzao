@@ -152,6 +152,28 @@ def encode_polyline(points: list[tuple[float, float]]) -> str:
     return "".join(out)
 
 
+def decode_polyline(encoded: str) -> list[tuple[float, float]]:
+    """Decodifica "Encoded Polyline" (precisão 1e5), usado pelo app ao exportar uma linha gravada."""
+    points, index, lat, lon = [], 0, 0, 0
+    while index < len(encoded):
+        for which in (0, 1):
+            result = shift = 0
+            while True:
+                b = ord(encoded[index]) - 63
+                index += 1
+                result |= (b & 0x1F) << shift
+                shift += 5
+                if b < 0x20 or index >= len(encoded):
+                    break
+            delta = ~(result >> 1) if result & 1 else result >> 1
+            if which == 0:
+                lat += delta
+            else:
+                lon += delta
+        points.append((lat / 1e5, lon / 1e5))
+    return points
+
+
 def simplify(points: list[tuple[float, float]], tol_m: float) -> list[tuple[float, float]]:
     """Ramer–Douglas–Peucker em coordenadas projetadas localmente (metros)."""
     if len(points) < 3:
@@ -512,6 +534,7 @@ def load_manual_lines(stops: dict, manual_dir: Path) -> list[dict]:
                 if len(seq) < 2:
                     continue
                 shape = [(float(p[0]), float(p[1])) for p in sentido.get("trajeto", [])] or \
+                        decode_polyline(sentido.get("trajeto_polyline", "")) or \
                         [(stops[k]["lat"], stops[k]["lon"]) for k in seq]
                 out.append({
                     "skip": False,
@@ -574,7 +597,7 @@ def write_db(stops: dict, patterns: list[dict], places: list[dict], source: str,
             cur.execute("INSERT INTO pattern_stops VALUES (?,?,?)", (pid, seq, ids[key]))
     seen = set()
     plid = 0
-    for pl in places:
+    for pl in sorted(places, key=lambda x: (x["kind"], x["name"].strip().lower(), x["lat"], x["lon"])):
         k = (pl["name"].strip().lower(), pl["kind"])
         if k in seen:
             continue

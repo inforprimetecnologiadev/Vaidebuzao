@@ -30,6 +30,9 @@ celular**: não tem Android Studio nem computador. Explique tudo em português s
   container do Claude Code bloqueia o Overpass, então não tente rodar o download aqui; use `--entrada` com um
   JSON local para testar.
 - Testes: `python3 -m unittest discover -s tools/data/tests`.
+- **Gravar linha** (app): o usuário grava trajeto + paradas no ônibus. `core/recording` mescla as gravações na rede
+  (`Recording.merge`) e exporta o JSON de `data/linhas`. Quando o dono mandar um arquivo `linha-*.json`, revise
+  (número, destino, pontos plausíveis) e commite em `data/linhas/`: o workflow de dados gera o novo `transit.db`.
 - **Situação em nov/2026:** o OSM tem cerca de 900 pontos e nenhuma linha urbana da região. O valor do app
   depende de cadastrar linhas (data/linhas, GTFS via LAI, ou mapeamento no OSM). Veja `docs/PEDIDO-LAI.md`.
 

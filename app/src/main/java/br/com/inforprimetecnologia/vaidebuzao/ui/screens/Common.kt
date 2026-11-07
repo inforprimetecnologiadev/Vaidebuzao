@@ -160,6 +160,7 @@ fun PatternRow(p: RoutePattern, onClick: () -> Unit, modifier: Modifier = Modifi
                 add(p.directionLabel)
                 p.headwayMinutes?.let { add("a cada ~$it min") }
                 if (p.inferredStops) add("itinerário aproximado")
+                if (p.isUserRecorded) add("gravada por você")
                 extra?.let { add(it) }
             }.distinct().joinToString(" · ")
             Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 2, overflow = TextOverflow.Ellipsis)

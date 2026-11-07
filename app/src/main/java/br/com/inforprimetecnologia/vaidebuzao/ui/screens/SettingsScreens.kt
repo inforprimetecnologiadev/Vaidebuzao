@@ -28,7 +28,9 @@ import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LightMode
+import androidx.compose.material.icons.filled.LocationOff
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.filled.Share
@@ -143,7 +145,7 @@ fun SettingsScreen(
 }
 
 @Composable
-fun PrivacyCenterScreen(app: AppViewModel, onBack: () -> Unit, onOpenHistory: () -> Unit, onOpenDoc: (String) -> Unit) {
+fun PrivacyCenterScreen(app: AppViewModel, onBack: () -> Unit, onOpenHistory: () -> Unit, onOpenDoc: (String) -> Unit, onOpenRecordings: () -> Unit) {
     val context = LocalContext.current
     val settings by app.settings.collectAsState()
     val records by app.consentRecords.collectAsState()
@@ -151,6 +153,7 @@ fun PrivacyCenterScreen(app: AppViewModel, onBack: () -> Unit, onOpenHistory: ()
     val scope = rememberCoroutineScope()
     var confirm by remember { mutableStateOf<String?>(null) }
     val lastAccept = records?.firstOrNull { it.action == ConsentAction.ACEITO }
+    val lastRecordingConsent = records?.firstOrNull()?.optional?.get(br.com.inforprimetecnologia.vaidebuzao.ui.state.OPT_RECORDING)
 
     Scaffold(topBar = { VdbTopBar("Central de privacidade", onBack = onBack) }, containerColor = MaterialTheme.colorScheme.background) { pad ->
         Column(Modifier.fillMaxSize().padding(pad).verticalScroll(rememberScrollState())) {
@@ -183,6 +186,21 @@ fun PrivacyCenterScreen(app: AppViewModel, onBack: () -> Unit, onOpenHistory: ()
                     )
                 },
             )
+            ListRow(
+                "Linhas que eu gravei",
+                subtitle = "Trajetos gravados no \"Gravar linha\" (só neste aparelho)",
+                icon = Icons.Filled.Route,
+                onClick = onOpenRecordings,
+            )
+            if (lastRecordingConsent == true) {
+                ListRow(
+                    "Retirar consentimento de gravação",
+                    subtitle = "Apaga todas as linhas gravadas",
+                    icon = Icons.Filled.LocationOff,
+                    iconTint = MaterialTheme.colorScheme.error,
+                    onClick = { confirm = "gravacoes" },
+                )
+            }
             ListRow("Meus consentimentos", subtitle = "Histórico com data e hora de cada decisão", icon = Icons.Filled.Description, onClick = onOpenHistory)
 
             SectionHeader("Seus direitos (LGPD, art. 18)", Modifier.padding(horizontal = 20.dp, vertical = 8.dp))
@@ -209,7 +227,7 @@ fun PrivacyCenterScreen(app: AppViewModel, onBack: () -> Unit, onOpenHistory: ()
             ListRow("Revogar consentimento", subtitle = "Volta para a tela de termos", icon = Icons.AutoMirrored.Filled.Undo, onClick = { confirm = "revogar" })
             ListRow(
                 "Apagar meus dados",
-                subtitle = "Remove favoritos, histórico, preferências e registros",
+                subtitle = "Remove favoritos, histórico, linhas gravadas, preferências e registros",
                 icon = Icons.Filled.Delete,
                 iconTint = MaterialTheme.colorScheme.error,
                 onClick = { confirm = "apagar" },
@@ -234,10 +252,17 @@ fun PrivacyCenterScreen(app: AppViewModel, onBack: () -> Unit, onOpenHistory: ()
     }
 
     when (confirm) {
+        "gravacoes" -> AlertDialog(
+            onDismissRequest = { confirm = null },
+            title = { Text("Retirar consentimento de gravação?") },
+            text = { Text("Todas as linhas gravadas neste celular serão apagadas. O que você já enviou para o projeto não é afetado.") },
+            confirmButton = { TextButton(onClick = { confirm = null; app.withdrawRecording() }) { Text("Retirar e apagar", color = MaterialTheme.colorScheme.error) } },
+            dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancelar") } },
+        )
         "revogar" -> AlertDialog(
             onDismissRequest = { confirm = null },
             title = { Text("Revogar consentimento?") },
-            text = { Text("O app vai parar de funcionar até você aceitar os termos de novo. Seu histórico de buscas será apagado. A revogação fica registrada com data e hora.") },
+            text = { Text("O app vai parar de funcionar até você aceitar os termos de novo. Seu histórico de buscas e as linhas gravadas serão apagados. A revogação fica registrada com data e hora.") },
             confirmButton = { TextButton(onClick = { confirm = null; app.revoke() }) { Text("Revogar") } },
             dismissButton = { TextButton(onClick = { confirm = null }) { Text("Cancelar") } },
         )
@@ -283,6 +308,9 @@ fun ConsentHistoryScreen(app: AppViewModel, onBack: () -> Unit) {
                         )
                         r.optional[OPT_HISTORY]?.let {
                             Text("Histórico de buscas: ${if (it) "permitido" else "não permitido"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        r.optional[br.com.inforprimetecnologia.vaidebuzao.ui.state.OPT_RECORDING]?.let {
+                            Text("Gravação de linhas: ${if (it) "permitida" else "não permitida"}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         Text("Registro: ${r.id.take(8)}…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
                     }

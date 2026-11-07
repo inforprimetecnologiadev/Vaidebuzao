@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
@@ -51,7 +52,7 @@ import br.com.inforprimetecnologia.vaidebuzao.ui.state.TransitViewModel
 import br.com.inforprimetecnologia.vaidebuzao.ui.theme.VdbTheme
 
 @Composable
-fun LinesScreen(vm: TransitViewModel, onOpenLine: (String) -> Unit) {
+fun LinesScreen(vm: TransitViewModel, onOpenLine: (String) -> Unit, onRecord: () -> Unit, onOpenRecordings: () -> Unit) {
     val network by vm.network.collectAsState()
     var query by rememberSaveable { mutableStateOf("") }
     Scaffold(topBar = { VdbTopBar("Linhas") }, containerColor = MaterialTheme.colorScheme.background) { pad ->
@@ -69,18 +70,18 @@ fun LinesScreen(vm: TransitViewModel, onOpenLine: (String) -> Unit) {
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
             )
             Spacer(Modifier.height(8.dp))
+            RecordCallout(onRecord, onOpenRecordings)
             val net = network
             when {
                 net == null -> SkeletonList(6)
                 net.lines.isEmpty() -> {
-                    val context = androidx.compose.ui.platform.LocalContext.current
                     EmptyState(
                         "Ainda não temos as linhas",
                         "Os pontos de ônibus de Cuiabá e Várzea Grande já estão no app, mas as linhas ainda não foram " +
                             "cadastradas nos dados abertos (OpenStreetMap). Estamos trabalhando para incluir. Você sabe " +
-                            "o itinerário de alguma linha? Conte pra gente.",
-                        actionText = "Como ajudar",
-                        onAction = { openUrl(context, br.com.inforprimetecnologia.vaidebuzao.BuildConfig.REPO_URL + "/blob/main/data/linhas/LEIA-ME.md") },
+                            "o itinerário de alguma linha? Grave enquanto anda de ônibus.",
+                        actionText = "Gravar uma linha",
+                        onAction = onRecord,
                     )
                 }
                 else -> {
@@ -204,6 +205,37 @@ fun LineDetailScreen(vm: TransitViewModel, ref: String, onBack: () -> Unit, onOp
                 if (i < stops.lastIndex) HorizontalDivider(Modifier.padding(start = 78.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             }
             item { Spacer(Modifier.height(32.dp)) }
+        }
+    }
+}
+
+/** Chamada para o "Gravar linha": o jeito de colocar linhas no app sem depender de ninguém. */
+@Composable
+private fun RecordCallout(onRecord: () -> Unit, onOpenRecordings: () -> Unit) {
+    androidx.compose.material3.Surface(
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shape = MaterialTheme.shapes.medium,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        Column(Modifier.padding(14.dp)) {
+            Text("Anda de ônibus? Grave a linha!", style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSecondaryContainer)
+            Text(
+                "Marque os pontos durante a viagem e a linha passa a valer no app.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
+            Spacer(Modifier.height(8.dp))
+            Row {
+                br.com.inforprimetecnologia.vaidebuzao.ui.components.VdbPrimaryButton(
+                    "Gravar linha",
+                    onRecord,
+                    icon = androidx.compose.material.icons.Icons.Filled.FiberManualRecord,
+                )
+                Spacer(Modifier.width(8.dp))
+                androidx.compose.material3.TextButton(onClick = onOpenRecordings, modifier = Modifier.padding(top = 4.dp)) {
+                    Text("Minhas gravações")
+                }
+            }
         }
     }
 }

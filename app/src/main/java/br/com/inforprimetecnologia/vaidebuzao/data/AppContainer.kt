@@ -9,6 +9,7 @@ class AppContainer(context: Context) {
     private val userDb = UserDatabase(app)
     val consent = ConsentRepository(userDb)
     val favorites = FavoritesRepository(userDb)
+    val recordings = RecordingRepository(userDb)
     val transit = TransitRepository(app)
     val legal = LegalRepository(app)
     val location = LocationRepository(app)
