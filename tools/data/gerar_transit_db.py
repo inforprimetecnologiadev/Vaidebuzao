@@ -29,6 +29,7 @@ import sqlite3
 import sys
 import time
 import urllib.parse
+import urllib.error
 import urllib.request
 import zipfile
 from collections import defaultdict
@@ -79,8 +80,10 @@ def overpass_query() -> str:
 relation["type"="route"]["route"~"^(bus|trolleybus|minibus)$"]{b}->.routes;
 .routes out body;
 (node(r.routes); way(r.routes);)->.members;
-node.members out body;
-way.members out geom;
+node.members;
+out body;
+way.members;
+out geom;
 (
   node["highway"="bus_stop"]{b};
   node["public_transport"="platform"]["bus"="yes"]{b};
@@ -113,6 +116,12 @@ def fetch_overpass() -> dict:
                 if not payload.get("elements"):
                     raise RuntimeError("resposta vazia")
                 return payload
+            except urllib.error.HTTPError as exc:
+                last_err = exc
+                detail = exc.read().decode("utf-8", "replace")[:800]
+                print(f"  falhou: {exc}\n{detail}", flush=True)
+                if exc.code == 400:
+                    raise SystemExit("Consulta Overpass inválida (HTTP 400).")
             except Exception as exc:  # noqa: BLE001
                 last_err = exc
                 print(f"  falhou: {exc}", flush=True)
