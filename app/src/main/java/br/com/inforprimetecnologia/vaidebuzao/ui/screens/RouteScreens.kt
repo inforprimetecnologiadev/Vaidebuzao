@@ -93,7 +93,13 @@ fun RouteResultsScreen(vm: TransitViewModel, onBack: () -> Unit, onEdit: () -> U
                 trip.loading || results == null -> SkeletonList(4)
                 results.isEmpty() -> EmptyState(
                     "Não achamos uma rota de ônibus",
-                    "Pode ser que não haja linha cadastrada perto da origem ou do destino. Tente um ponto mais próximo de uma avenida, ou ajude a completar os dados no OpenStreetMap.",
+                    if (vm.network.value?.lines.isNullOrEmpty()) {
+                        "As linhas de ônibus da região ainda não estão na base de dados do app (só os pontos). " +
+                            "Assim que forem cadastradas, as rotas aparecem aqui."
+                    } else {
+                        "Não há linha cadastrada passando perto da origem e do destino ao mesmo tempo. " +
+                            "Tente um local mais perto de uma avenida."
+                    },
                 )
                 else -> LazyColumn(Modifier.fillMaxSize(), contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     itemsIndexed(results) { index, it ->

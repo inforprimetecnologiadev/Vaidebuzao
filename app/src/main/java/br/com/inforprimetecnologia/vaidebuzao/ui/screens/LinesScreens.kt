@@ -72,7 +72,17 @@ fun LinesScreen(vm: TransitViewModel, onOpenLine: (String) -> Unit) {
             val net = network
             when {
                 net == null -> SkeletonList(6)
-                net.lines.isEmpty() -> EmptyState("Nenhuma linha cadastrada", "A base de dados ainda não tem linhas para a região.")
+                net.lines.isEmpty() -> {
+                    val context = androidx.compose.ui.platform.LocalContext.current
+                    EmptyState(
+                        "Ainda não temos as linhas",
+                        "Os pontos de ônibus de Cuiabá e Várzea Grande já estão no app, mas as linhas ainda não foram " +
+                            "cadastradas nos dados abertos (OpenStreetMap). Estamos trabalhando para incluir. Você sabe " +
+                            "o itinerário de alguma linha? Conte pra gente.",
+                        actionText = "Como ajudar",
+                        onAction = { openUrl(context, br.com.inforprimetecnologia.vaidebuzao.BuildConfig.REPO_URL + "/blob/main/data/linhas/LEIA-ME.md") },
+                    )
+                }
                 else -> {
                     val lines = remember(net, query) { net.searchLines(query, limit = 500) }
                     if (lines.isEmpty()) {

@@ -10,6 +10,7 @@ on:
     paths:
       - "tools/data/**"
       - "data/gtfs/**"
+      - "data/linhas/**"
       - ".github/workflows/atualizar-dados.yml"
 
 permissions:
