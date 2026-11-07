@@ -3,11 +3,11 @@
 Gerado automaticamente por `tools/data/gerar_transit_db.py`. Não edite à mão.
 
 - **Fonte:** OpenStreetMap (© colaboradores do OpenStreetMap, ODbL)
-- **Versão dos dados:** `20261107.2107` (gerado em 2026-11-07T21:07:38Z)
+- **Versão dos dados:** `20261107.2113` (gerado em 2026-11-07T21:13:54Z)
 - **Recorte (sul, oeste, norte, leste):** `-16.05,-56.55,-15.1,-55.55`
-- **Pontos de ônibus:** 859 (com pelo menos uma linha: 0)
+- **Pontos de ônibus:** 880 (com pelo menos uma linha: 0)
 - **Linhas distintas:** 0 · **sentidos/variantes:** 0
-- **Lugares para busca offline:** 604
+- **Lugares para busca offline:** 629
 - **Sentidos com pontos inferidos pelo trajeto:** 0
 - **Relações descartadas:** 1
 
