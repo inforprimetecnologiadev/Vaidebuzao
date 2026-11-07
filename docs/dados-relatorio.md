@@ -3,13 +3,13 @@
 Gerado automaticamente por `tools/data/gerar_transit_db.py`. Não edite à mão.
 
 - **Fonte:** OpenStreetMap (© colaboradores do OpenStreetMap, ODbL)
-- **Versão dos dados:** `20261107.2053` (gerado em 2026-11-07T20:53:10Z)
+- **Versão dos dados:** `20261107.2107` (gerado em 2026-11-07T21:07:38Z)
 - **Recorte (sul, oeste, norte, leste):** `-16.05,-56.55,-15.1,-55.55`
-- **Pontos de ônibus:** 908 (com pelo menos uma linha: 28)
-- **Linhas distintas:** 1 · **sentidos/variantes:** 1
-- **Lugares para busca offline:** 629
+- **Pontos de ônibus:** 859 (com pelo menos uma linha: 0)
+- **Linhas distintas:** 0 · **sentidos/variantes:** 0
+- **Lugares para busca offline:** 604
 - **Sentidos com pontos inferidos pelo trajeto:** 0
-- **Relações descartadas (sem pontos nem trajeto):** 0
+- **Relações descartadas:** 1
 
 > Dados © colaboradores do OpenStreetMap (ODbL). Itinerários podem estar desatualizados ou incompletos.
 > Ajude a melhorar editando o OpenStreetMap: https://www.openstreetmap.org
@@ -18,4 +18,7 @@ Gerado automaticamente por `tools/data/gerar_transit_db.py`. Não edite à mão.
 
 | Linha | Nome | Sentidos | Pontos (por sentido) | Observação |
 |---|---|---|---|---|
-| 11-0010 | Recife - Cuiabá | 1 | 28 |  |
+
+## Relações descartadas
+
+- relation/10745501: 11-0010 Recife - Cuiabá — fora da região (linha rodoviária)
