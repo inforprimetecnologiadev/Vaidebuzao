@@ -1,0 +1,75 @@
+name: Build (APK de teste)
+
+on:
+  push:
+    branches: ["**"]
+    paths-ignore:
+      - "**.md"
+      - "branding/previews/**"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Lint, testes e APK debug
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Testes do núcleo (rotas, consentimento)
+        run: ./gradlew :core:test --stacktrace
+
+      - name: Testes do app, lint e APK debug
+        run: ./gradlew :app:testDebugUnitTest :app:lintDebug :app:assembleDebug --stacktrace
+
+      - name: Renomear APK
+        run: |
+          VERSION=$(grep VERSION_NAME version.properties | cut -d= -f2)
+          SHORT=$(echo "$GITHUB_SHA" | cut -c1-7)
+          mkdir -p saida
+          cp app/build/outputs/apk/debug/app-debug.apk "saida/VaiDeBuzao-v${VERSION}-teste-${SHORT}.apk"
+          echo "APK_FILE=$(ls saida/*.apk)" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VaiDeBuzao-apk-teste
+          path: saida/*.apk
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: relatorios
+          path: |
+            app/build/reports/
+            core/build/reports/
+          retention-days: 7
+
+      # Publica/atualiza a pré-versão "teste" para baixar fácil pelo celular:
+      # https://github.com/<repo>/releases/tag/teste
+      - name: Publicar APK de teste (pré-versão)
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release delete teste --yes --cleanup-tag || true
+          gh release create teste "$APK_FILE" \
+            --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "APK de teste (branch ${GITHUB_REF_NAME})" \
+            --notes "Versão de TESTE gerada automaticamente a partir do commit ${GITHUB_SHA::7} do branch \`${GITHUB_REF_NAME}\`. Ela se instala ao lado da versão oficial com o nome \"Vai de Buzão (teste)\". Para usar no dia a dia, prefira a versão oficial (Releases v*)."

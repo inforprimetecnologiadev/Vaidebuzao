@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="vdb_navy">#FF06166A</color>
+    <color name="vdb_royal">#FF1446C8</color>
+    <color name="vdb_yellow">#FFFFC800</color>
+    <color name="vdb_bg_light">#FFF6F8FD</color>
+    <color name="vdb_bg_dark">#FF070D24</color>
+</resources>
