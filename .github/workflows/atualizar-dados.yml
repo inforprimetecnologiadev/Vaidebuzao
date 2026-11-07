@@ -41,14 +41,24 @@ jobs:
         run: |
           git config user.name "vai-de-buzao-bot"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add app/src/main/assets/transit.db docs/dados-relatorio.md
-          if git diff --cached --quiet; then
-            echo "Nada mudou."
-            exit 0
-          fi
-          git commit -m "dados: atualiza pontos e linhas de ônibus ($(date -u +%Y-%m-%d))"
+          mkdir -p "$RUNNER_TEMP/novo"
+          cp app/src/main/assets/transit.db docs/dados-relatorio.md "$RUNNER_TEMP/novo/"
           for i in 1 2 3 4; do
-            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            # parte sempre da versão mais nova do branch (evita conflito com outra execução)
+            git fetch -q origin "${GITHUB_REF_NAME}"
+            git reset -q --hard "origin/${GITHUB_REF_NAME}"
+            cp "$RUNNER_TEMP/novo/transit.db" app/src/main/assets/transit.db
+            cp "$RUNNER_TEMP/novo/dados-relatorio.md" docs/dados-relatorio.md
+            # compara o conteúdo (sem a tabela meta): só commita se os dados mudaram
+            OLD=$(git show "HEAD:app/src/main/assets/transit.db" > "$RUNNER_TEMP/antigo.db" 2>/dev/null && python3 tools/data/hash_dados.py "$RUNNER_TEMP/antigo.db" || echo nenhum)
+            NEW=$(python3 tools/data/hash_dados.py "$RUNNER_TEMP/novo/transit.db")
+            if [ "$OLD" = "$NEW" ]; then
+              echo "Os dados não mudaram."
+              exit 0
+            fi
+            git add app/src/main/assets/transit.db docs/dados-relatorio.md
+            git commit -q -m "dados: atualiza pontos e linhas de ônibus ($(date -u +%Y-%m-%d))"
+            git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
             sleep $((i * 5))
           done
           exit 1
