@@ -251,6 +251,15 @@ def infer_stops_along(shape: list[tuple[float, float]], stop_grid: Grid) -> list
 
 # ----------------------------------------------------------------------------- OSM
 
+def in_bbox(lat: float, lon: float) -> bool:
+    south, west, north, east = BBOX
+    return south <= lat <= north and west <= lon <= east
+
+
+MANUAL_DIR = ROOT / "data" / "linhas"
+SNAP_METERS = 35.0
+
+
 def parse_headway(tags: dict) -> int | None:
     raw = tags.get("interval") or tags.get("headway")
     if not raw:
@@ -286,7 +295,7 @@ def build_from_osm(payload: dict):
 
     def stop_from_node(nid: int):
         n = nodes.get(nid)
-        if not n or "lat" not in n:
+        if not n or "lat" not in n or not in_bbox(n["lat"], n["lon"]):
             return None
         key = ("n", nid)
         if key not in stops:
@@ -303,6 +312,8 @@ def build_from_osm(payload: dict):
             g = w["geometry"]
             lat = sum(p["lat"] for p in g) / len(g)
             lon = sum(p["lon"] for p in g) / len(g)
+            if not in_bbox(lat, lon):
+                return None
             stops[key] = {"lat": lat, "lon": lon, "name": w.get("tags", {}).get("name"), "ref": f"way/{wid}"}
         return key
 
@@ -323,6 +334,15 @@ def build_from_osm(payload: dict):
         platforms = [m for m in members if m.get("role", "") in PLATFORM_ROLES]
         stop_pos = [m for m in members if m.get("role", "") in STOP_ROLES]
         chosen = platforms if len(platforms) >= 2 else stop_pos
+        # Linhas rodoviárias/interestaduais (ex.: Recife–Cuiabá) não são transporte urbano
+        outside = 0
+        for m in chosen:
+            el = nodes.get(m["ref"]) if m["type"] == "node" else None
+            if el and "lat" in el and not in_bbox(el["lat"], el["lon"]):
+                outside += 1
+        if chosen and outside / len(chosen) > 0.3:
+            patterns.append({"skip": True, "tags": tags, "osm": rel["id"], "motivo": "fora da região (linha rodoviária)"})
+            continue
         seq = []
         for m in chosen:
             key = stop_from_node(m["ref"]) if m["type"] == "node" else stop_from_way(m["ref"]) if m["type"] == "way" else None
@@ -334,7 +354,7 @@ def build_from_osm(payload: dict):
                 w = ways.get(m["ref"])
                 if w and w.get("geometry"):
                     geoms.append([(p["lat"], p["lon"]) for p in w["geometry"]])
-        shape = chain_ways(geoms)
+        shape = [p for p in chain_ways(geoms) if in_bbox(p[0], p[1])]
         inferred = False
         if len(seq) < 2 and len(shape) >= 2:
             seq = infer_stops_along(shape, stop_grid)
@@ -455,6 +475,61 @@ def build_from_gtfs(zip_path: Path):
     return stops, patterns
 
 
+# ----------------------------------------------------------------------------- linhas manuais
+
+def load_manual_lines(stops: dict, manual_dir: Path) -> list[dict]:
+    """
+    Linhas cadastradas pelo projeto em data/linhas/*.json (ver data/linhas/LEIA-ME.md).
+    Cada ponto informado por coordenada é "grudado" no ponto do OSM mais próximo (até 35 m);
+    se não houver, um ponto novo é criado.
+    """
+    if not manual_dir.exists():
+        return []
+    grid = Grid()
+    for key, st in stops.items():
+        grid.add(st["lat"], st["lon"], key)
+    out = []
+    for f in sorted(manual_dir.glob("*.json")):
+        data = json.loads(f.read_text(encoding="utf-8"))
+        for li in data if isinstance(data, list) else [data]:
+            for si, sentido in enumerate(li.get("sentidos", [])):
+                seq = []
+                for pi, pt in enumerate(sentido.get("pontos", [])):
+                    lat, lon = float(pt["lat"]), float(pt["lon"])
+                    if not in_bbox(lat, lon):
+                        raise SystemExit(f"{f.name}: ponto fora da região: {lat},{lon}")
+                    near = min(grid.near(lat, lon, SNAP_METERS), default=None, key=lambda x: x[0])
+                    if near:
+                        key = near[1]
+                        if pt.get("nome") and not stops[key].get("name"):
+                            stops[key]["name"] = pt["nome"]
+                    else:
+                        key = ("m", f"{f.stem}:{li.get('numero')}:{si}:{pi}")
+                        stops[key] = {"lat": lat, "lon": lon, "name": pt.get("nome"), "ref": f"manual/{f.name}"}
+                        grid.add(lat, lon, key)
+                    if not seq or seq[-1] != key:
+                        seq.append(key)
+                if len(seq) < 2:
+                    continue
+                shape = [(float(p[0]), float(p[1])) for p in sentido.get("trajeto", [])] or \
+                        [(stops[k]["lat"], stops[k]["lon"]) for k in seq]
+                out.append({
+                    "skip": False,
+                    "ref": str(li.get("numero", "")).strip(),
+                    "name": li.get("nome") or f"Linha {li.get('numero', '')}",
+                    "from": sentido.get("de"),
+                    "to": sentido.get("para"),
+                    "color": li.get("cor"),
+                    "operator": li.get("operadora"),
+                    "headway": sentido.get("intervalo_min") or li.get("intervalo_min"),
+                    "stops": seq,
+                    "shape": shape,
+                    "inferred": False,
+                    "source_ref": f"manual/{f.name}",
+                })
+    return out
+
+
 # ----------------------------------------------------------------------------- saída
 
 def assign_areas(stops: dict, places: list[dict]) -> None:
@@ -549,7 +624,7 @@ def write_report(meta: dict, patterns: list[dict], out: Path) -> None:
         f"- **Linhas distintas:** {len(lines)} · **sentidos/variantes:** {meta['patterns']}",
         f"- **Lugares para busca offline:** {meta['places']}",
         f"- **Sentidos com pontos inferidos pelo trajeto:** {sum(1 for p in ok if p['inferred'])}",
-        f"- **Relações descartadas (sem pontos nem trajeto):** {len(skipped)}",
+        f"- **Relações descartadas:** {len(skipped)}",
         "",
         "> Dados © colaboradores do OpenStreetMap (ODbL). Itinerários podem estar desatualizados ou incompletos.",
         "> Ajude a melhorar editando o OpenStreetMap: https://www.openstreetmap.org",
@@ -575,7 +650,8 @@ def write_report(meta: dict, patterns: list[dict], out: Path) -> None:
         md += ["", "## Relações descartadas", ""]
         for p in skipped[:200]:
             t = p["tags"]
-            md.append(f"- relation/{p['osm']}: {t.get('ref', '')} {t.get('name', '')}".rstrip())
+            motivo = p.get("motivo", "sem pontos nem trajeto")
+            md.append(f"- relation/{p['osm']}: {t.get('ref', '')} {t.get('name', '')} — {motivo}")
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text("\n".join(md) + "\n", encoding="utf-8")
 
@@ -587,6 +663,7 @@ def main(argv=None) -> int:
     ap.add_argument("--saida", type=Path, default=DB_OUT)
     ap.add_argument("--relatorio", type=Path, default=REPORT_OUT)
     ap.add_argument("--gtfs-dir", type=Path, default=GTFS_DIR)
+    ap.add_argument("--linhas-dir", type=Path, default=MANUAL_DIR)
     args = ap.parse_args(argv)
 
     if args.entrada:
@@ -612,6 +689,12 @@ def main(argv=None) -> int:
             print(f"GTFS encontrado ({', '.join(f.name for f in gtfs_files)}): substitui as linhas do OSM.")
             stops, patterns = g_stops, g_patterns
             source = f"GTFS ({', '.join(f.name for f in gtfs_files)}) + lugares do OpenStreetMap (ODbL)"
+
+    manual = load_manual_lines(stops, args.linhas_dir)
+    if manual:
+        print(f"Linhas cadastradas manualmente: {len(manual)} sentidos")
+        patterns += manual
+        source += " + linhas cadastradas pelo projeto (data/linhas)"
 
     assign_areas(stops, places)
     meta = write_db(stops, patterns, places, source, args.saida)

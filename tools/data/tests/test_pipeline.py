@@ -40,6 +40,12 @@ FIXTURE = {
         # Linha 202 (PTv1): só vias, pontos devem ser inferidos
         {"type": "relation", "id": 901, "tags": {"type": "route", "route": "bus", "ref": "202", "name": "202 Várzea Grande"},
          "members": [{"type": "way", "ref": 52, "role": ""}]},
+        # Linha rodoviária interestadual: deve ser descartada (pontos fora da região)
+        {"type": "relation", "id": 903, "tags": {"type": "route", "route": "bus", "ref": "11-0010", "name": "Recife - Cuiabá"},
+         "members": [{"type": "node", "ref": 80, "role": "platform"}, {"type": "node", "ref": 81, "role": "platform"},
+                     {"type": "node", "ref": 1, "role": "platform"}]},
+        node(80, -8.05, -34.90, highway="bus_stop", name="Terminal do Recife"),
+        node(81, -16.68, -49.25, highway="bus_stop", name="Terminal de Goiânia"),
         # Relação inútil (sem nada)
         {"type": "relation", "id": 902, "tags": {"type": "route", "route": "bus", "ref": "999"}, "members": []},
         node(1, -15.6000, -56.1000, highway="bus_stop", name="Praça Alencastro"),
@@ -64,8 +70,17 @@ class PipelineTest(unittest.TestCase):
         src.write_text(json.dumps(FIXTURE))
         self.db = self.tmp / "transit.db"
         self.report = self.tmp / "relatorio.md"
+        linhas = self.tmp / "linhas"
+        linhas.mkdir()
+        (linhas / "teste.json").write_text(json.dumps([{
+            "numero": "500", "nome": "500 Teste Manual", "operadora": "Operadora X", "intervalo_min": 30,
+            "sentidos": [{"de": "Centro", "para": "Shopping", "pontos": [
+                {"lat": -15.60001, "lon": -56.10002},                       # gruda na Praça Alencastro
+                {"lat": -15.6200, "lon": -56.0700, "nome": "Ponto Novo"},  # cria ponto novo
+            ]}],
+        }]))
         rc = pipeline.main(["--entrada", str(src), "--saida", str(self.db), "--relatorio", str(self.report),
-                            "--gtfs-dir", str(self.tmp / "sem-gtfs")])
+                            "--gtfs-dir", str(self.tmp / "sem-gtfs"), "--linhas-dir", str(linhas)])
         self.assertEqual(rc, 0)
         self.con = sqlite3.connect(self.db)
 
@@ -77,7 +92,7 @@ class PipelineTest(unittest.TestCase):
 
     def test_linhas_e_pontos(self):
         pats = self.q("SELECT ref, to_name, headway_min, inferred FROM patterns ORDER BY ref")
-        self.assertEqual(pats, [("101", "CPA", 15, 0), ("202", None, None, 1)])
+        self.assertEqual(pats, [("101", "CPA", 15, 0), ("202", None, None, 1), ("500", "Shopping", 30, 0)])
         names = self.q("""SELECT s.name FROM pattern_stops ps JOIN stops s ON s.id = ps.stop_id
                           JOIN patterns p ON p.id = ps.pattern_id WHERE p.ref='101' ORDER BY ps.seq""")
         self.assertEqual([n for (n,) in names], ["Praça Alencastro", None, "Shopping"])
@@ -86,7 +101,9 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual([n for (n,) in inferred], ["Centro VG", "Avenida da FEB"])
 
     def test_ponto_avulso_e_bairro(self):
-        self.assertEqual(self.q("SELECT COUNT(*) FROM stops")[0][0], 6)
+        # 6 do OSM + 1 criado pela linha manual; os pontos de Recife e Goiânia ficam de fora
+        self.assertEqual(self.q("SELECT COUNT(*) FROM stops")[0][0], 7)
+        self.assertEqual(self.q("SELECT COUNT(*) FROM stops WHERE name LIKE 'Terminal%'")[0][0], 0)
         area = self.q("SELECT area FROM stops WHERE name='Praça Alencastro'")[0][0]
         self.assertEqual(area, "Centro Norte")
 
@@ -95,9 +112,17 @@ class PipelineTest(unittest.TestCase):
         self.assertEqual(kinds["Hospital Teste"], "Hospital")
         self.assertEqual(kinds["Centro Norte"], "Bairro")
         meta = dict(self.q("SELECT key, value FROM meta"))
-        self.assertEqual(meta["patterns"], "2")
+        self.assertEqual(meta["patterns"], "3")
         self.assertIn("OpenStreetMap", meta["source"])
-        self.assertIn("relation/902", self.report.read_text())
+        report = self.report.read_text()
+        self.assertIn("relation/902", report)
+        self.assertIn("relation/903", report)
+        self.assertIn("fora da região", report)
+
+    def test_linha_manual_gruda_no_ponto_osm(self):
+        names = self.q("""SELECT s.name FROM pattern_stops ps JOIN stops s ON s.id = ps.stop_id
+                          JOIN patterns p ON p.id = ps.pattern_id WHERE p.ref='500' ORDER BY ps.seq""")
+        self.assertEqual([n for (n,) in names], ["Praça Alencastro", "Ponto Novo"])
 
     def test_trajeto_unido_na_ordem(self):
         shape = self.q("SELECT shape FROM patterns WHERE ref='101'")[0][0]
